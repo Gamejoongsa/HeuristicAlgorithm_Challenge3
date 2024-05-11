@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# shits
+.DS_Store
+agents/__pycache__/
+failure_*.txt
+except_*.txt
+
 # C extensions
 *.so
 
