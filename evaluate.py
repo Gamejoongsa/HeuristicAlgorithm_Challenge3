@@ -33,7 +33,7 @@ MEGABYTES = 1024 ** 2
 #: The number of games to run the evaluation
 GAMES = 5
 #: LIMIT FOR A SINGLE EXECUTION, 13 minutes. (+- 3 minute for space)
-TIME_LIMIT = 60 * 13
+TIME_LIMIT = 60 #* 13
 #: LIMIT OF MEMORY USAGE, 1GB
 MEMORY_LIMIT = 1 * 1024 * MEGABYTES
 
@@ -63,7 +63,7 @@ def evaluate_algorithm(agent_name, initial_state, result_queue: Queue):
     if not IS_RUN:
         logging.basicConfig(level=logging.DEBUG if IS_DEBUG else logging.INFO,
                             format='%(asctime)s [%(name)-12s] %(levelname)-8s %(message)s',
-                            filename=f'execution-{agent_name}.log',
+                            filename=f'execution-{agent_name}-{os.getpid()}.log',
                             # Also, the output will be logged in 'execution-(agent).log' file.
                             filemode='w+',
                             force=True)  # The logging file will be overwritten.
@@ -187,7 +187,7 @@ if __name__ == '__main__':
                   f' = {score:4.2f}')
 
             # Write-down the failures
-            with Path(f'./failure_{agent}.txt').open('w+t') as fp:
+            with Path(f'./failure_{agent}-{os.getpid()}.txt').open('w+t') as fp:
                 fp.write('\n\n'.join(failures[agent]))
 
     # Start evaluation process (using multi-processing)
