@@ -8,7 +8,7 @@ from action import *
 from board import GameBoard
 
 def has_no_child(board: GameBoard, player: int):
-    return len(board.get_applicable_cities(player=player)) == 0
+    return len(board.get_applicable_cities(player=player)) != 2
 
 def get_state_id(state: dict) -> str:
     assert 'state_id' in state, "카탄 게임의 상태를 넣어주세요 이 빡대가리야"
