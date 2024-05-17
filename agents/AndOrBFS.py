@@ -76,6 +76,7 @@ class Agent:  # Do not change the name of this class!
         self.children = {}
         self.status = {}
         self.order = {}
+        self.action = {}
         
     def set_parent_and_children(self, parent: dict, child: dict):
         self.parent[get_state_id(child)] = get_state_id(parent)
@@ -101,7 +102,7 @@ class Agent:  # Do not change the name of this class!
                     return False # not determined yet
             self.status[state_id] = 'Failure'
             parent_id = self.parent[state_id]
-            if parent_id == board.get_initial_state()['state_id']:
+            if parent_id == get_state_id(board.get_initial_state()):
                 return True # initial is Failure
             self.status[parent_id] = 'Failure'
             grandparent_id = self.parent[parent_id]
@@ -122,13 +123,12 @@ class Agent:  # Do not change the name of this class!
                 else:
                     return False # not determined yet
             self.status[state_id] = 'Solvable'
-            if state_id == board.get_initial_state()['state_id']:
+            if state_id == get_state_id(board.get_initial_state()):
                 return True # initial is Solvable
             parent_id = self.parent[state_id]
             self.status[parent_id] = 'Solvable'
             grandparent_id = self.parent[parent_id]
             return self.solvableLabel(board, grandparent_id, is_init=False)
-            
 
     def AndOrBFS(self, board: GameBoard):
         frontiers = Queue()
@@ -155,7 +155,10 @@ class Agent:  # Do not change the name of this class!
             
             if player_id not in remaining_order: # after second turn - goal
                 isSolved = self.solvableLabel(board, get_state_id(node))
-                # return plan
+                if isSolved:
+                    # return plan
+                    
+                    pass
                 # remove
                 continue
             if has_no_child(board, player=player_id): # has no child
@@ -170,10 +173,11 @@ class Agent:  # Do not change the name of this class!
             before_player = remaining_order[:player_turn]
             next_order = remaining_order[player_turn:]
             
-            for _, _, child in expand_board_state(board, node, player=player_id):
+            for village, road, child in expand_board_state(board, node, player=player_id):
                 # set parent and children attribute
                 self.set_parent_and_children(parent=node, child=child)
                 self.order[get_state_id(child)] = remaining_order
+                self.action[get_state_id(child)] = (village, road)
                 
                 # expand states from action
                 for grandchild in cascade_expansion(board, child, before_player):
