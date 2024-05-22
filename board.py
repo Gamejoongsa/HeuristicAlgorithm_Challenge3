@@ -297,7 +297,7 @@ class GameBoard:
             self._renderer.render_board()
 
         # Pick a setup turn randomly
-        self._player_number = random_integer(0, 4)
+        self._player_number = random_integer(0, 3)
         self._current_player = 0
         if IS_DEBUG:  # Logging for debug
             self._logger.debug(f'You\'re player {self._player_number}')
@@ -339,7 +339,6 @@ class GameBoard:
         state = self._initial
         self.reset_setup_order()
 
-        print(players_policy.keys())
         for player in range(4):
             if player not in players_policy:
                 players_policy[player] = \
@@ -386,32 +385,6 @@ class GameBoard:
             return village_act, road_act
 
         return policy
-
-    def _wood_max_init(self, state_id: str):
-        """
-        Greedy initialization strategy for a player (Take a coordinate where maximizes the number of woods)
-        """
-
-        def _lumber_counter(coord):
-            return self._game.board.get_hex_resources_for_intersection(tuple_to_coordinate(coord))[Resource.LUMBER]
-
-        # Query all applicable nodes for the initial village.
-        applicable_nodes = self.get_applicable_villages()
-        # Choose a random node
-        chosen_node = max(applicable_nodes, key=_lumber_counter)
-        # Make the initial village(settlement)
-        village_act = VILLAGE(self._current_player, chosen_node)
-        # Apply village action for further construction
-        village_act(self)
-
-        # Query all applicable road options adjacent to the lastly built village
-        applicable_edges = self.get_applicable_roads_from(chosen_node)
-        # Choose a random edge
-        chosen_path = max(applicable_edges, key=lambda path: max(_lumber_counter(c) for c in path))
-        # Make the initial route
-        road_act = ROAD(self._current_player, chosen_path)
-
-        return village_act, road_act
 
     def set_to_state(self, specific_state=None, is_initial: bool = False):
         """
@@ -773,12 +746,8 @@ class GameBoard:
                 raise ValueError('You need to execute VILLAGE, ROAD, or PASS actions during the initial phase')
 
         for act in actions:  # For each actions in the variable arguments,
-            try:
-                # Run actions through calling each action object
-                act(self)
-            except:
-                # If the action is forbidden, nothing happens.
-                pass
+            # Run actions through calling each action object. If error occurs, raise as it is.
+            act(self)
 
             # Break the loop if the game ends within executing actions.
             if not self._initial_phase and self.is_game_end():
@@ -851,7 +820,7 @@ class GameBoard:
                 continue
 
             yields = players_yields[player].total_yield
-            hex_types.update(yields.keys())
+            hex_types.update({key for key, value in yields.items() if value > 0})
 
         if IS_DEBUG:  # Logging for debug
             self._logger.debug(f'Hex types near this player: {hex_types}')

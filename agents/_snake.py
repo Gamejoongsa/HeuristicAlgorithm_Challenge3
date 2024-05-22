@@ -6,6 +6,13 @@ from typing import Tuple, List, Callable, Dict, Generator
 from action import *
 from board import GameBoard
 
+prev = None
+transition = {}
+untried = {}
+backtack = {}
+
+def OnlineDFS(board: GameBoard, state: dict, remaining_order: list, path: list ):
+    
 
 def expand_board_state(board: GameBoard, state: dict, player: int):
     """

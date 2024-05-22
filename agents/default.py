@@ -122,7 +122,7 @@ class Agent:  # Do not change the name of this class!
 
         return plans
 
-    def decide_new_village(self, board: GameBoard, time_limit: float = None) -> Callable[[str], Tuple[Action, Action]]:
+    def decide_new_village(self, board: GameBoard, time_limit: float = None) -> Callable[[dict], Tuple[Action, Action]]:
         """
         This algorithm search for the best place of placing a new village.
 
@@ -134,8 +134,8 @@ class Agent:  # Do not change the name of this class!
         expansion_order = board.reset_setup_order()
         plans = self.and_search(board, initial, expansion_order, [])
 
-        def _plan_execute(state_id):
-            plan = plans.get(state_id, None)
+        def _plan_execute(state):
+            plan = plans.get(state['state_id'], None)
             if plan is None:
                 return None, None
 
