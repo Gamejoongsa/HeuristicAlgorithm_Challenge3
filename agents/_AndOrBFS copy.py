@@ -36,7 +36,7 @@ def expand_board_state(board: GameBoard, state: dict, player: int):
         # Apply village construction for further construction
         board.simulate_action(state, village)
 
-        for path_coord in board.get_applicable_roads_from(coord, player=player)[:1]:
+        for path_coord in board.get_applicable_roads_from(coord, player=player):
             # Test all possible roads nearby that village
             road = ROAD(player, path_coord)
             yield village, road, board.simulate_action(state, village, road)  # Yield this simulation result
@@ -59,144 +59,157 @@ def cascade_expansion(board: GameBoard, state: dict, players: List[int]):
 
     current_player = players[0]
     next_players = players[1:]
-    current_order = board.get_remaining_setup_order()
+    # current_order = board.get_remaining_setup_order()
 
     for _, _, next_state in expand_board_state(board, state, current_player):
-        board.reset_setup_order(current_order[1:])
-        for next_next_state in cascade_expansion(board, next_state, next_players):
-            yield next_next_state
+        # board.reset_setup_order(current_order[1:])
+        yield from cascade_expansion(board, next_state, next_players)
 
+class Node:
+    def __init__(self, state, priority, order, action=None, parent=None, children=None, status=None) -> None:
+        self.state = state
+        self.priority = priority
+        if parent is None:
+            parent = self
+        self.parent = parent
+        if children is None:
+            children = []
+        self.children = children
+        self.status = status
+        self.order = order
+        self.action = action
+        
+    def set_parent(self, parent):
+        self.parent = parent
+        
+    def set_child(self, child):
+        self.children.append(child)
+        
+    def id(self):
+        return self.state['state_id']
+        
+    def __lt__(self, other):
+        return self.priority < other.priority
+        
 
 class Agent:  # Do not change the name of this class!
     """
     An agent class, with and-or search (DFS) method
     """
-    def __init__(self) -> None:
-        self.parent = {}
-        self.children = {}
-        self.status = {}
-        self.order = {}
-        self.action = {}
-        
-    def set_parent_and_children(self, parent: dict, child: dict):
-        self.parent[get_state_id(child)] = get_state_id(parent)
-        if get_state_id(parent) not in self.children:
-            self.children[get_state_id(parent)] = []
-        self.children[get_state_id(parent)].append(get_state_id(child))
     
-    def failureLabel(self, board: GameBoard, state_id: str, is_init=True):
+    def failureLabel(self, board: GameBoard, state: Node, is_init=True):
         if is_init:
-            self.status[state_id] = 'Failure'
-            parent_id = self.parent[state_id]
-            self.status[parent_id] = 'Failure'
-            grandparent_id = self.parent[parent_id]
-            return self.failureLabel(board, grandparent_id, is_init=False)
+            state.status = 'Failure'
+            parent = state.parent
+            parent.status = 'Failure'
+            grandparent = parent.parent
+            return self.failureLabel(board, grandparent, is_init=False)
         else:
-            for action in self.children[state_id]:
-                if action in self.status:
-                    if self.status[action] == 'Failure':
+            for action in state.children:
+                if action.status is not None:
+                    if action.status == 'Failure':
                         continue
                     else:
                         return False # Not Failure
                 else:
                     return False # not determined yet
-            self.status[state_id] = 'Failure'
-            parent_id = self.parent[state_id]
-            if parent_id == get_state_id(board.get_initial_state()):
+            state.status = 'Failure'
+            parent = state.parent
+            if parent.id() == get_state_id(board.get_initial_state()):
                 return True # initial is Failure
-            self.status[parent_id] = 'Failure'
-            grandparent_id = self.parent[parent_id]
-            return self.failureLabel(board, grandparent_id, is_init=False)
+            parent.status = 'Failure'
+            grandparent = parent.parent
+            return self.failureLabel(board, grandparent, is_init=False)
             
     
-    def solvableLabel(self, board: GameBoard, state_id: str, is_init=True):
+    def solvableLabel(self, board: GameBoard, state: Node, is_init=True):
         if is_init:
-            self.status[state_id] = 'Solvable'
-            return self.solvableLabel(board, self.parent[state_id], is_init=False)
+            state.status = 'Solvable'
+            return self.solvableLabel(board, state.parent, is_init=False)
         else:
-            for state in self.children[state_id]:
-                if state in self.status:
-                    if self.status[state] == 'Solvable':
+            for child in state.children:
+                if child.status is not None:
+                    if child.status == 'Solvable':
                         continue
                     else:
                         return False # Not Solvable
                 else:
                     return False # not determined yet
-            self.status[state_id] = 'Solvable'
-            if state_id == get_state_id(board.get_initial_state()):
+            state.status = 'Solvable'
+            if state.id() == get_state_id(board.get_initial_state()):
                 return True # initial is Solvable
-            parent_id = self.parent[state_id]
-            self.status[parent_id] = 'Solvable'
-            grandparent_id = self.parent[parent_id]
-            return self.solvableLabel(board, grandparent_id, is_init=False)
+            parent = state.parent
+            parent.status = 'Solvable'
+            grandparent = parent.parent
+            return self.solvableLabel(board, grandparent, is_init=False)
         
-    def make_ssambbong_plan(self, board: GameBoard):
+    def make_ssambbong_plan(self, board: GameBoard, initial: Node):
         plans = {}
-        for initial in self.children[board.get_initial_state()['state_id']]:
-            for action in self.children[initial]:
-                if self.status[action] == 'Solvable':
+        for state in initial.children:
+            for action in state.children:
+                if action.status == 'Solvable':
                     plan = {}
-                    for child in self.children[action]:
-                        for child_action in self.children[child]:
-                            if self.status[child_action] == 'Solvable':
-                                plan[child] = [self.action[child_action], {}]
-                plans[initial] = [self.action[action], plan]
+                    for child in action.children:
+                        for child_action in child.children:
+                            if child_action.status == 'Solvable':
+                                plan[child] = [child_action.action, {}]
+                plans[state] = [action.action, plan]
                 break
         return plans
             
 
     def AndOrBFS(self, board: GameBoard) -> dict:
         frontiers = Queue()
-        initial = board.get_state()
         remaining_order = board.reset_setup_order()
         player_id = board.get_player_id()
         player_turn = remaining_order.index(player_id)
-        plans = {}
+        initial = Node(board.get_state(), 1, remaining_order)
+        i=0
         
         before_player = remaining_order[:player_turn]
         next_order = remaining_order[player_turn:]
         
-        for next_state in cascade_expansion(board, initial, before_player):
+        for next_state in cascade_expansion(board, initial.state, before_player):
+            next_state = Node(next_state, 1, next_order, parent=initial)
+            initial.set_child(next_state)
             frontiers.put(next_state)
-            self.set_parent_and_children(parent=initial, child=next_state)
-            self.order[get_state_id(next_state)] = next_order
         
         while not frontiers.empty():
             node = frontiers.get()
-            remaining_order = self.order[get_state_id(node)]
+            remaining_order = node.order
             
-            board.set_to_state(node)
+            board.set_to_state(node.state)
             board.reset_setup_order(remaining_order)
             
             if player_id not in remaining_order: # after second turn - goal
-                isSolved = self.solvableLabel(board, get_state_id(node))
+                isSolved = self.solvableLabel(board, node)
                 if isSolved:
                     return self.make_ssambbong_plan(self, board)
                 # remove
                 continue
-            if has_no_child(board, player=player_id): # has no child
-                isFailure = self.failureLabel(board, get_state_id(node))
-                if isFailure:
-                    raise Exception('No solution exists: Errors on all AND children.\n [Cause]\n' + '\n' + '-' * 80)
-                # remove
-                continue
+            # if has_no_child(board, player=player_id): # has no child
+            #     isFailure = self.failureLabel(board, node)
+            #     if isFailure:
+            #         raise Exception('No solution exists: Errors on all AND children.\n [Cause]\n' + '\n' + '-' * 80)
+            #     # remove
+            #     continue
             
             remaining_order = remaining_order[1:]
             player_turn = remaining_order.index(player_id)
             before_player = remaining_order[:player_turn]
             next_order = remaining_order[player_turn:]
             
-            for village, road, child in expand_board_state(board, node, player=player_id):
+            for village, road, child in expand_board_state(board, node.state, player=player_id):
                 # set parent and children attribute
-                self.set_parent_and_children(parent=node, child=child)
-                self.order[get_state_id(child)] = remaining_order
-                self.action[get_state_id(child)] = (village, road)
+                child = Node(child, 1, remaining_order, action=(village, road), parent=node)
+                node.set_child(child)
+                # print(child.id())
                 
                 # expand states from action
-                for grandchild in cascade_expansion(board, child, before_player):
+                for grandchild in cascade_expansion(board, child.state, before_player):
+                    grandchild = Node(grandchild, 1, next_order, parent=child)
+                    child.set_child(grandchild)
                     frontiers.put(grandchild)
-                    self.set_parent_and_children(parent=child, child=grandchild)
-                    self.order[get_state_id(grandchild)] = next_order
                 
 
     def decide_new_village(self, board: GameBoard, time_limit: float = None) -> Callable[[str], Tuple[Action, Action]]:
@@ -211,8 +224,8 @@ class Agent:  # Do not change the name of this class!
         expansion_order = board.reset_setup_order()
         plans = self.AndOrBFS(board)
 
-        def _plan_execute(state_id):
-            plan = plans.get(state_id, None)
+        def _plan_execute(state):
+            plan = plans.get(state['state_id'], None)
             if plan is None:
                 return None, None
 

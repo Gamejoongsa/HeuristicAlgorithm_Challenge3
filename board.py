@@ -297,7 +297,7 @@ class GameBoard:
             self._renderer.render_board()
 
         # Pick a setup turn randomly
-        self._player_number = random_integer(0, 4)
+        self._player_number = random_integer(0, 3)
         self._current_player = 0
         if IS_DEBUG:  # Logging for debug
             self._logger.debug(f'You\'re player {self._player_number}')
