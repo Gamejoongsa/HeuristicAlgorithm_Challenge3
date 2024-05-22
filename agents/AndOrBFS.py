@@ -129,8 +129,23 @@ class Agent:  # Do not change the name of this class!
             self.status[parent_id] = 'Solvable'
             grandparent_id = self.parent[parent_id]
             return self.solvableLabel(board, grandparent_id, is_init=False)
+        
+    def make_ssambbong_plan(self, board: GameBoard):
+        plans = {}
+        for initial in self.children[board.get_initial_state()['state_id']]:
+            for action in self.children[initial]:
+                if self.status[action] == 'Solvable':
+                    plan = {}
+                    for child in self.children[action]:
+                        for child_action in self.children[child]:
+                            if self.status[child_action] == 'Solvable':
+                                plan[child] = [self.action[child_action], {}]
+                plans[initial] = [self.action[action], plan]
+                break
+        return plans
+            
 
-    def AndOrBFS(self, board: GameBoard):
+    def AndOrBFS(self, board: GameBoard) -> dict:
         frontiers = Queue()
         initial = board.get_state()
         remaining_order = board.reset_setup_order()
@@ -146,7 +161,7 @@ class Agent:  # Do not change the name of this class!
             self.set_parent_and_children(parent=initial, child=next_state)
             self.order[get_state_id(next_state)] = next_order
         
-        while not frontiers.empty:
+        while not frontiers.empty():
             node = frontiers.get()
             remaining_order = self.order[get_state_id(node)]
             
@@ -156,9 +171,7 @@ class Agent:  # Do not change the name of this class!
             if player_id not in remaining_order: # after second turn - goal
                 isSolved = self.solvableLabel(board, get_state_id(node))
                 if isSolved:
-                    # return plan
-                    
-                    pass
+                    return self.make_ssambbong_plan(self, board)
                 # remove
                 continue
             if has_no_child(board, player=player_id): # has no child
@@ -196,7 +209,7 @@ class Agent:  # Do not change the name of this class!
         """
         initial = board.get_state()
         expansion_order = board.reset_setup_order()
-        plans = self.and_search(board, initial, expansion_order, [])
+        plans = self.AndOrBFS(board)
 
         def _plan_execute(state_id):
             plan = plans.get(state_id, None)
