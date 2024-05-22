@@ -7,6 +7,37 @@ from action import *
 from board import GameBoard
 
 
+class State:
+    def __init__(self, stateId):
+        self.parent = None
+        self.children = []
+        self.stateId = None
+        self.diversityArray = None
+        self.coord = None
+
+    def getCoord(self):
+        return self.coord
+
+    def setCoord(self, coord):
+        self.coord = coord
+    
+    def getParent(self):
+        return self.parent
+    
+    def setParent(self, state):
+        self.parent = state
+    
+    def getChildren(self):
+        return self.children
+    
+    def appendChildren(self, state):
+        self.parent.append(state)
+
+    def getDiversityComparedTo(self, array):
+        return array#계산하기.
+    
+
+
 def expand_board_state(board: GameBoard, state: dict, player: int):
     """
     Expand all possible children of given state, when a player placing his/her village and road, using the board.
@@ -29,11 +60,11 @@ def expand_board_state(board: GameBoard, state: dict, player: int):
         # Apply village construction for further construction
         board.simulate_action(state, village)
 
-        for path_coord in board.get_applicable_roads_from(coord, player=player)[:1]:
+        for path_coord in board.get_applicable_roads_from(coord, player=player):
             # Test all possible roads nearby that village
             road = ROAD(player, path_coord)
             yield village, road, board.simulate_action(state, village, road)  # Yield this simulation result
-
+            
 
 def cascade_expansion(board: GameBoard, state: dict, players: List[int]):
     """
@@ -53,7 +84,7 @@ def cascade_expansion(board: GameBoard, state: dict, players: List[int]):
     current_player = players[0]
     next_players = players[1:]
     current_order = board.get_remaining_setup_order()
-
+    
     for _, _, next_state in expand_board_state(board, state, current_player):
         board.reset_setup_order(current_order[1:])
         for next_next_state in cascade_expansion(board, next_state, next_players):
@@ -111,7 +142,6 @@ class Agent:  # Do not change the name of this class!
             path = path + [state['state_id']]
 
         plans = {}
-
         # For each children state (after doing all other's actions), call OR search.
         for next_state in cascade_expansion(board, state, before_player):
             # We will call OR search here. We will throw the error as it is.
@@ -119,7 +149,6 @@ class Agent:  # Do not change the name of this class!
             or_plan = self.or_search(board, next_state, order_from_player, path)
             # Call or_plan if we reach this state
             plans[next_state['state_id']] = or_plan
-
         return plans
 
     def decide_new_village(self, board: GameBoard, time_limit: float = None) -> Callable[[str], Tuple[Action, Action]]:
@@ -131,18 +160,22 @@ class Agent:  # Do not change the name of this class!
         :return: A Program (Function) to execute
         """
         initial = board.get_state()
-        expansion_order = board.reset_setup_order()
-        plans = self.and_search(board, initial, expansion_order, [])
+        
 
+        expansion_order = board.reset_setup_order() #(0, 1, 2, 3, 3, 2, 1, 0)
+
+        plans = self.and_search(board, initial, expansion_order, [])
         def _plan_execute(state_id):
             plan = plans.get(state_id, None)
             if plan is None:
                 return None, None
+            
 
             actions, next_step_plan = plan
+            
+            
             plans.clear()
             plans.update(next_step_plan)
-
+            
             return actions
-
         return _plan_execute
