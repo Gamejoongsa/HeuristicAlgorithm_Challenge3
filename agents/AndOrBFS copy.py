@@ -35,11 +35,9 @@ def expand_board_state(board: GameBoard, state: dict, player: int):
         village = VILLAGE(player, coord)
         # Apply village construction for further construction
         board.simulate_action(state, village)
-
-        for path_coord in board.get_applicable_roads_from(coord, player=player):
-            # Test all possible roads nearby that village
-            road = ROAD(player, path_coord)
-            yield village, road, board.simulate_action(state, village, road)  # Yield this simulation result
+        path_coord = board.get_applicable_roads_from(coord, player=player)[0]
+        road = ROAD(player, path_coord)
+        yield village, road, board.simulate_action(state, village, road)  # Yield this simulation result
 
 
 def cascade_expansion(board: GameBoard, state: dict, players: List[int]):
@@ -180,6 +178,7 @@ class Agent:  # Do not change the name of this class!
             
             board.set_to_state(node.state)
             board.reset_setup_order(remaining_order)
+            remaining_order = remaining_order[1:]
             
             if player_id not in remaining_order: # after second turn - goal
                 isSolved = self.solvableLabel(board, node)
@@ -194,13 +193,17 @@ class Agent:  # Do not change the name of this class!
             #     # remove
             #     continue
             
-            remaining_order = remaining_order[1:]
             player_turn = remaining_order.index(player_id)
             before_player = remaining_order[:player_turn]
             next_order = remaining_order[player_turn:]
             
             for village, road, child in expand_board_state(board, node.state, player=player_id):
                 # set parent and children attribute
+                diversity = board.diversity_of_state(child)
+                if diversity == 3 or diversity == 5:
+                    pass
+                else:
+                    continue
                 child = Node(child, 1, remaining_order, action=(village, road), parent=node)
                 node.set_child(child)
                 # print(child.id())
@@ -212,7 +215,7 @@ class Agent:  # Do not change the name of this class!
                     frontiers.put(grandchild)
                 
 
-    def decide_new_village(self, board: GameBoard, time_limit: float = None) -> Callable[[str], Tuple[Action, Action]]:
+    def decide_new_village(self, board: GameBoard, time_limit: float = None) -> Callable[[dict], Tuple[Action, Action]]:
         """
         This algorithm search for the best place of placing a new village.
 
