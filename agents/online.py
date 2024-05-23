@@ -74,10 +74,10 @@ class Agent:  # Do not change the name of this class!
                 coordList = state['board']['intersections']
                 myVilage = [key for key, value in coordList.items() if value['owner'] == playerID]
                 ableCoordList = [key for key, value in coordList.items() if value['owner'] is None]
-                unabelCoordList = [key for key, value in coordList.items() if value['owner'] is not None]
+                unableCoordList = [key for key, value in coordList.items() if value['owner'] is not None]
 
                 if len(myVilage) == 0:
-                    for i in unabelCoordList:
+                    for i in unableCoordList:
                         ableCoordList = delUnable(i, ableCoordList)
                     coord = [i for i in ableCoordList if sum(intersectionDict[i]) == 3]
                     coord = coord[0]
@@ -85,7 +85,7 @@ class Agent:  # Do not change the name of this class!
                     path = [(i, j) for i, j in paths if i == coord or j == coord][0]#도로 아무거나 고르기.
                     return (VILLAGE(playerID, coord), ROAD(playerID, path))
                 else:
-                    for i in unabelCoordList:
+                    for i in unableCoordList:
                         ableCoordList = delUnable(i, ableCoordList)
                     coord = ableCoordList.copy()
                     coord.sort(key = lambda x : min([a+b for a, b in zip(intersectionDict[myVilage[0]], intersectionDict[x])]), reverse = True)
