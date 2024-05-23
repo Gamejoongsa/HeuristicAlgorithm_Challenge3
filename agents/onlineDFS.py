@@ -97,22 +97,31 @@ class Agent:  # Do not change the name of this class!
             PriorityQueue[Priority]: 해당 village action을 수행했을 때 diversity 기준으로 정렬된 queue
         """
         playerID = state['player_id']
-        res = PriorityQueue()
-        paths = [((3, -5), (3, -4)), ((2, -5), (3, -5)), ((3, 1), (4, 0)), ((4, -1), (4, 0)), ((2, 0), (3, -1)), ((3, -1), (4, -1)), ((3, -2), (3, -1)), ((3, -2), (4, -3)), ((2, -2), (3, -2)), ((4, -3), (5, -3)), ((4, -4), (4, -3)), ((3, 1), (3, 2)), ((2, 1), (3, 1)), ((4, -1), (5, -2)), ((5, -3), (5, -2)), ((-5, 3), (-4, 3)), ((-5, 2), (-5, 3)), ((-1, -3), (0, -4)), ((0, -4), (1, -4)), ((-1, 3), (0, 2)), ((0, 2), (1, 2)), ((0, 1), (0, 2)), ((0, -2), (1, -3)), ((1, -3), (2, -3)), ((1, -4), (1, -3)), ((0, 1), (1, 0)), ((1, 0), (2, 0)), ((1, -1), (1, 0)), ((0, 4), (1, 3)), ((1, 3), (2, 3)), ((1, 2), (1, 3)), ((-4, 4), (-3, 4)), ((-4, 3), (-4, 4)), ((-5, 2), (-4, 1)), ((-4, 1), (-3, 1)), ((-4, 0), (-4, 1)), ((-2, -1), (-1, -2)), ((-1, -2), (0, -2)), ((-1, -3), (-1, -2)), ((-2, -1), (-2, 0)), ((-3, -1), (-2, -1)), ((-2, 5), (-1, 4)), ((-1, 4), (0, 4)), ((-1, 3), (-1, 4)), ((-2, 2), (-1, 1)), ((-1, 1), (0, 1)), ((-1, 0), (-1, 1)), ((3, -4), (4, -4)), ((-4, 3), (-3, 2)), ((-3, 2), (-2, 2)), ((-3, 1), (-3, 2)), ((-1, 0), (0, -1)), ((0, -1), (1, -1)), ((0, -2), (0, -1)), ((-3, 5), (-2, 5)), ((-3, 4), (-3, 5)), ((1, -4), (2, -5)), ((1, -1), (2, -2)), ((2, -3), (2, -2)), ((1, 2), (2, 1)), ((2, 0), (2, 1)), ((-4, 0), (-3, -1)), ((-2, -3), (-1, -3)), ((-3, -2), (-2, -3)), ((-3, 1), (-2, 0)), ((-2, 0), (-1, 0)), ((-3, 4), (-2, 3)), ((-2, 3), (-1, 3)), ((-2, 2), (-2, 3)), ((2, -3), (3, -4)), ((2, 3), (3, 2)), ((-3, -2), (-3, -1))]
         coordList = state['board']['intersections']
+        
         myVillage = [key for key, value in coordList.items() if value['owner'] == playerID]
         ableCoordList = [key for key, value in coordList.items() if value['owner'] is None]
         unableCoordList = [key for key, value in coordList.items() if value['owner'] is not None]
+        
+        road_checkers = [(1, 0), (0, -1), (-1, 1)]
+        res = PriorityQueue()
         
         for i in unableCoordList:
             ableCoordList = delUnable(i, ableCoordList)
         
         for coord in ableCoordList:
             village = VILLAGE(playerID, coord)
-            # diversity 평가를 위한 evaluate_state 생성
             
             # 도로는 아무데나(중요 사항 아님)
-            path_coord = [(i, j) for i, j in paths if i == coord or j == coord][0]
+            path_coord = tuple()
+            temp = [key for key, value in coordList.items() if value['owner'] is None]
+            for i in road_checkers:
+                if (coord[0]+i[0], coord[1]+i[1]) in temp:
+                    path_coord = (coord, (coord[0]+i[0], coord[1]+i[1]))
+                    break
+                elif (coord[0]-i[0], coord[1]-i[1]) in temp:
+                    path_coord = (coord, (coord[0]-i[0], coord[1]-i[1]))
+                    break
             road = ROAD(playerID, path_coord)
             
             # diversity 계산
@@ -174,12 +183,12 @@ class Agent:  # Do not change the name of this class!
                 transition[(prev['state_id'], prev['action'])] = state
                 if id(state) not in backtrack:
                     backtrack[id(state)] = PriorityQueue()
-                backtrack[id(state)].put((prev['state_id'], self.get_diversity(intersectionDict, myVillage)))
+                backtrack[id(state)].put(Priority(data=prev['state_id'], prior=self.get_diversity(intersectionDict, myVillage)))
             
             if id(state) not in untried:
                 if id(state) not in backtrack:
                     return None, None
-                backState = backtrack[id(state)].get()
+                backState = backtrack[id(state)].get().data
                 for prevstate, b, bs in transition.items():
                     if bs == backState and prevstate == prev['state_id']:
                         action = b
