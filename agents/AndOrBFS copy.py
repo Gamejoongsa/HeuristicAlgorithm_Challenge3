@@ -59,11 +59,12 @@ def cascade_expansion(board: GameBoard, state: dict, players: List[int]):
 
     current_player = players[0]
     next_players = players[1:]
-    # current_order = board.get_remaining_setup_order()
+    current_order = board.get_remaining_setup_order()
 
     for _, _, next_state in expand_board_state(board, state, current_player):
-        # board.reset_setup_order(current_order[1:])
-        yield from cascade_expansion(board, next_state, next_players)
+        board.reset_setup_order(current_order[1:])
+        for next_next_state in cascade_expansion(board, next_state, next_players):
+            yield next_next_state
 
 class Node:
     def __init__(self, state, priority, order, action=None, parent=None, children=None, status=None) -> None:
@@ -164,7 +165,6 @@ class Agent:  # Do not change the name of this class!
         player_id = board.get_player_id()
         player_turn = remaining_order.index(player_id)
         initial = Node(board.get_state(), 1, remaining_order)
-        i=0
         
         before_player = remaining_order[:player_turn]
         next_order = remaining_order[player_turn:]
